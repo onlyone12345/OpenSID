@@ -3,14 +3,12 @@
 	public function __construct()
 	{
 		parent::__construct();
-
 		$this->load->model('keluarga_model');
 	}
 
 	public function autocomplete()
 	{
-		$str = autocomplete_str('nama', 'tweb_penduduk');
-		return $str;
+		return $this->autocomplete_str('nama', 'tweb_penduduk');
 	}
 
 	private function cacatx_sql()

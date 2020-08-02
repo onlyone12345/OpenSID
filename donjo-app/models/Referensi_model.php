@@ -31,7 +31,10 @@ define("LIST_LAP", serialize(array(
 	'16' => 'Akseptor KB',
 	'17' => 'Akte Kelahiran',
 	'18' => 'Kepemilikan KTP',
-	'19' => 'Jenis Asuransi'
+	'19' => 'Jenis Asuransi',
+	'bantuan_penduduk' => 'Penerima Bantuan Penduduk',
+	'bantuan_keluarga' => 'Penerima Bantuan Keluarga',
+	'covid' => 'Status Covid'
 )));
 
 
@@ -85,11 +88,20 @@ class Referensi_model extends CI_Model {
 		return $status_rekam;
 	}
 
+	public function list_by_id($tabel)
+	{
+		$data = $this->db->order_by('id')
+			->get($tabel)
+			->result_array();
+		$data = array_combine(array_column($data, 'id'), $data);		
+		return $data;
+	}
+
 	public function list_lap()
 	{
 		$list_lap = unserialize(LIST_LAP);
 		return $list_lap;
 	}
-}
 
+}
 ?>

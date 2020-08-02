@@ -1,6 +1,8 @@
-<?php 
+<?php
 
 class Database_model extends CI_Model {
+
+	private $user = 1;
 
 	private $engine = 'InnoDB';
 	/* define versi opensid dan script migrasi yang harus dijalankan */
@@ -38,7 +40,10 @@ class Database_model extends CI_Model {
 		'20.02' => array('migrate' => 'migrasi_2002_ke_2003', 'nextVersion' => '20.03'),
 		'20.03' => array('migrate' => 'migrasi_2003_ke_2004', 'nextVersion' => '20.04'),
 		'20.04' => array('migrate' => 'migrasi_2004_ke_2005', 'nextVersion' => '20.05'),
-		'20.05' => array('migrate' => NULL, 'nextVersion' => NULL)
+		'20.05' => array('migrate' => 'migrasi_2005_ke_2006', 'nextVersion' => '20.06'),
+		'20.06' => array('migrate' => 'migrasi_2006_ke_2007', 'nextVersion' => '20.07'),
+		'20.07' => array('migrate' => 'migrasi_2007_ke_2008', 'nextVersion' => '20.08'),
+		'20.08' => array('migrate' => NULL, 'nextVersion' => NULL)
 	);
 
 	public function __construct()
@@ -49,6 +54,7 @@ class Database_model extends CI_Model {
 		$this->load->dbforge();
 		$this->load->model('surat_master_model');
 		$this->load->model('analisis_import_model');
+		$this->user = $this->session_user ?: 1;
 	}
 
 	private function cek_engine_db()
@@ -103,10 +109,10 @@ class Database_model extends CI_Model {
 				$migrate = $versionMigrate[$nextVersion]['migrate'];
 				log_message('error', 'Jalankan '.$migrate);
 				$nextVersion = $versionMigrate[$nextVersion]['nextVersion'];
-				if (function_exists(__NAMESPACE__ .'\Database_model::'.$migrate))
-					call_user_func(__NAMESPACE__ .'\Database_model::'.$migrate);
+				if (method_exists($this, $migrate))
+					call_user_func(__NAMESPACE__ .'\\Database_model::'.$migrate);
 				else
-					$this->jalankan_migrasi($migrate);					
+					$this->jalankan_migrasi($migrate);
 			}
 		}
 		else
@@ -157,6 +163,22 @@ class Database_model extends CI_Model {
   {
   	// Tidak lakukan apa-apa
   }
+
+	// Cek apakah migrasi perlu dijalankan
+	public function cek_migrasi()
+	{
+		// Paksa menjalankan migrasi kalau belum
+		// Migrasi direkam di tabel migrasi
+		$sudah = false;
+		if ($this->db->table_exists('migrasi') )
+			$sudah = $this->db->where('versi_database', VERSI_DATABASE)
+				->get('migrasi')->num_rows();
+		if (!$sudah)
+		{
+			$this->migrasi_db_cri();
+		}
+	}
+
 
   private function _migrasi_db_cri()
   {
@@ -217,6 +239,9 @@ class Database_model extends CI_Model {
 		$this->jalankan_migrasi('migrasi_2002_ke_2003');
 		$this->jalankan_migrasi('migrasi_2003_ke_2004');
 		$this->jalankan_migrasi('migrasi_2004_ke_2005');
+		$this->jalankan_migrasi('migrasi_2005_ke_2006');
+		$this->jalankan_migrasi('migrasi_2006_ke_2007');
+		$this->jalankan_migrasi('migrasi_2007_ke_2008');
   }
 
   private function jalankan_migrasi($migrasi)
@@ -336,7 +361,7 @@ class Database_model extends CI_Model {
 				$isi_teks = $setting_teks_berjalan->value;
 				$data = array(
 					'teks' => $isi_teks,
-					'created_by' => $this->session->user
+					'created_by' => $this->user
 				);
 				$this->db->insert('teks_berjalan', $data);
 				$this->db->where('key','isi_teks_berjalan')->delete('setting_aplikasi');
@@ -360,7 +385,7 @@ class Database_model extends CI_Model {
 						$isi = array(
 							'teks' => $isi_teks,
 							'status' => $data['enabled'],
-							'created_by' => $this->session->user
+							'created_by' => $this->user
 						);
 						$this->db->insert('teks_berjalan', $isi);
 					}
@@ -3608,11 +3633,18 @@ class Database_model extends CI_Model {
 			"artikel", //remove everything except widgets 1003
 			"gis_simbol",
 			"klasifikasi_surat",
+			"keuangan_manual_ref_rek1",
+			"keuangan_manual_ref_rek2",
+			"keuangan_manual_ref_rek3",
+			"keuangan_manual_ref_bidang",
+			"keuangan_manual_ref_kegiatan",
+			"keuangan_manual_rinci_tpl",
 			"media_sosial", //?
 			"provinsi",
 			"ref_dokumen",
 			"ref_pindah",
 			"ref_syarat_surat",
+			"ref_status_covid",
 			"setting_modul",
 			"setting_aplikasi",
 			"setting_aplikasi_options",
@@ -3687,4 +3719,3 @@ class Database_model extends CI_Model {
 	}
 
 }
-?>

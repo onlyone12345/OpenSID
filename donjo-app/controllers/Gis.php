@@ -22,7 +22,7 @@ class Gis extends Admin_Controller {
 	{
 		unset($_SESSION['log']);
 		unset($_SESSION['cari']);
-		unset($_SESSION['filter']);
+		unset($_SESSION['filter']); // ini status_penduduk
 		unset($_SESSION['sex']);
 		unset($_SESSION['warganegara']);
 		unset($_SESSION['fisik']);
@@ -36,8 +36,9 @@ class Gis extends Admin_Controller {
 		unset($_SESSION['umur_min']);
 		unset($_SESSION['umur_max']);
 		unset($_SESSION['pekerjaan_id']);
-		unset($_SESSION['status']);
-		unset($_SESSION['pendidikan_id']);
+		unset($_SESSION['status']); // status kawin
+		unset($_SESSION['pendidikan_sedang_id']);
+		unset($_SESSION['pendidikan_kk_id']);
 		unset($_SESSION['status_penduduk']);
 		unset($_SESSION['layer_penduduk']);
 		unset($_SESSION['layer_keluarga']);
@@ -50,10 +51,11 @@ class Gis extends Admin_Controller {
 
 	public function index()
 	{
-		$variabel_sesi = array('cari', 'filter', 'sex', 'agama');
-		foreach ($variabel_sesi as $variabel)
+		$list_session = array('filter', 'sex', 'cari', 'umur_min', 'umur_max', 'pekerjaan_id', 'status', 'agama', 'pendidikan_sedang_id', 'pendidikan_kk_id', 'status_penduduk');
+
+		foreach ($list_session as $session)
 		{
-			$data[$variabel] = $this->session->userdata($variabel) ?: '';
+			$data[$session] = $this->session->userdata($session) ?: '';
 		}
 
 		if (isset($_SESSION['dusun']))
@@ -82,10 +84,10 @@ class Gis extends Admin_Controller {
 			$data[$variabel] = $this->session->userdata($variabel) ?: 0;
 		}
 
+		$data['list_status_penduduk'] = $this->referensi_model->list_data('tweb_penduduk_status');
+		$data['list_jenis_kelamin'] = $this->referensi_model->list_data('tweb_penduduk_sex');
 		$data['list_dusun'] = $this->penduduk_model->list_dusun();
 		$data['wilayah'] = $this->penduduk_model->list_wil();
-		$data['list_agama'] = $this->penduduk_model->list_agama();
-		$data['list_pendidikan_kk'] = $this->penduduk_model->list_pendidikan_kk();
 		$data['desa'] = $this->config_model->get_data();
 		$data['lokasi'] = $this->plan_lokasi_model->list_data();
 		$data['garis'] = $this->plan_garis_model->list_data();
@@ -98,7 +100,7 @@ class Gis extends Admin_Controller {
 		$data['list_lap'] = $this->referensi_model->list_lap();
 		$header = $this->header_model->get_data();
 		$header['minsidebar'] = 1;
-		
+
 		$this->load->view('header', $header);
 		$this->load->view('nav',$nav);
 		$this->load->view('gis/maps', $data);
@@ -243,18 +245,27 @@ class Gis extends Admin_Controller {
 
 	public function ajax_adv_search()
 	{
-		$data['dusun'] = $this->penduduk_model->list_dusun();
-		$data['agama'] = $this->penduduk_model->list_agama();
-		$data['pendidikan_kk'] = $this->penduduk_model->list_pendidikan_kk();
-		$data['pekerjaan'] = $this->penduduk_model->list_pekerjaan();
+		$list_session = array('umur_min', 'umur_max', 'pekerjaan_id', 'status', 'agama', 'pendidikan_sedang_id', 'pendidikan_kk_id', 'status_penduduk');
+
+		foreach ($list_session as $session)
+		{
+			$data[$session] = $this->session->userdata($session) ?: '';
+		}
+
+		$data['list_agama'] = $this->referensi_model->list_data('tweb_penduduk_agama');
+		$data['list_pendidikan'] = $this->referensi_model->list_data('tweb_penduduk_pendidikan');
+		$data['list_pendidikan_kk'] = $this->referensi_model->list_data('tweb_penduduk_pendidikan_kk');
+		$data['list_pekerjaan'] = $this->referensi_model->list_data('tweb_penduduk_pekerjaan');
+		$data['list_status_kawin'] = $this->referensi_model->list_data('tweb_penduduk_kawin');
+		$data['list_status_penduduk'] = $this->referensi_model->list_data('tweb_penduduk_status');
 		$data['form_action'] = site_url("gis/adv_search_proses");
 
-		$this->load->view("gis/ajax_adv_search_form", $data);
+		$this->load->view("sid/kependudukan/ajax_adv_search_form", $data);
 	}
 
 	public function adv_search_proses()
 	{
-		$adv_search = $_POST;
+		$adv_search = $this->validasi_pencarian($this->input->post());
 		$i = 0;
 		while ($i++ < count($adv_search))
 		{
@@ -274,6 +285,19 @@ class Gis extends Admin_Controller {
 			}
 		}
 		redirect('gis');
+	}
+
+	private function validasi_pencarian($post)
+	{
+		$data['umur_min'] = bilangan($post['umur_min']);
+		$data['umur_max'] = bilangan($post['umur_max']);
+		$data['pekerjaan_id'] = $post['pekerjaan_id'];
+		$data['status'] = $post['status'];
+		$data['agama'] = $post['agama'];
+		$data['pendidikan_sedang_id'] = $post['pendidikan_sedang_id'];
+		$data['pendidikan_kk_id'] = $post['pendidikan_kk_id'];
+		$data['status_penduduk'] = $post['status_penduduk'];
+		return $data;
 	}
 
 	public function layer_garis()

@@ -59,7 +59,7 @@
 
     <!-- Diperlukan untuk script jquery khusus halaman -->
 		<script src="<?= base_url() ?>assets/bootstrap/js/jquery.min.js"></script>
-    
+
     <style type="text/css">
       #footer{
         padding: 3px 0;
@@ -114,7 +114,7 @@
       #global-nav-right li:hover {
           background: rgba(0, 0, 0, 0) linear-gradient(to bottom, #6db3f2 0%, #54a3ee 50%, #3690f0 51%, #1e69de 100%) repeat scroll 0 0;
       }
-      i.fa {margin-right: 10px;}
+      .main-header i.fa {margin-right: 10px;}
     </style>
     <?php $this->load->view('head_tags_front') ?>
   </head>
@@ -126,7 +126,7 @@
           <div class="container-fluid">
             <div class="navbar-header">
               <a class="navbar-brand" href="<?= site_url(); ?>first/">
-                <img src="<?= LogoDesa($desa['logo']);?>" alt="<?= $desa['nama_desa']?>" width="30px" style="margin:-7px"/>
+                <img src="<?= gambar_desa($desa['logo']);?>" alt="<?= $desa['nama_desa']?>" width="30px" style="margin:-7px"/>
               </a>
               <p class="navbar-brand">
                 <?= ucwords($this->setting->sebutan_desa).' '.$desa['nama_desa'] ?>
@@ -145,7 +145,7 @@
                       </ul>
                     </li>
                   <?php else: ?>
-                    <li><a href="<?= $data['link']?>"><i class="fa fa-home fa-lg"></i> <?= $data['nama'] ?></a></li>                                   
+                    <li><a href="<?= $data['link']?>"><i class="fa fa-home fa-lg"></i> <?= $data['nama'] ?></a></li>
                   <?php endif; ?>
                 <?php endforeach; ?>
               </ul>
