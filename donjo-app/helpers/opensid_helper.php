@@ -1,4 +1,7 @@
 <?php
+
+defined('BASEPATH') OR exit('No direct script access allowed');
+
 /**
  * File ini:
  *
@@ -42,13 +45,12 @@
  * @link 	https://github.com/OpenSID/OpenSID
  */
 
-if(!defined('BASEPATH')) exit('No direct script access allowed');
-
-define("VERSION", '20.08-pasca');
-/* Untuk migrasi database. Simpan nilai ini di tabel migrasi untuk menandakan sudah migrasi ke versi ini.
-   Versi database = [yyyymmdd][nomor urut dua digit]. Ubah setiap kali mengubah struktur database.
-*/
-define('VERSI_DATABASE', '2020080101');
+define("VERSION", '21.07');
+/**
+ * Untuk migrasi database. Simpan nilai ini di tabel migrasi untuk menandakan sudah migrasi ke versi ini
+ * Versi database = [yyyymmdd][nomor urut dua digit]. Ubah setiap kali mengubah struktur database.
+ */
+define('VERSI_DATABASE', '2021070101');
 define("LOKASI_LOGO_DESA", 'desa/logo/');
 define("LOKASI_ARSIP", 'desa/arsip/');
 define("LOKASI_CONFIG_DESA", 'desa/config/');
@@ -71,8 +73,10 @@ define("LOKASI_MEDIA", 'desa/upload/media/');
 define("LOKASI_SIMBOL_LOKASI", 'desa/upload/gis/lokasi/point/');
 define("LOKASI_SIMBOL_LOKASI_DEF", 'assets/images/gis/point/');
 
-// Kode laporan statistik di mana kode isian belum di isi
+// Kode laporan statistik
+define('JUMLAH', 666);
 define('BELUM_MENGISI', 777);
+define('TOTAL', 888);
 
 // Kode laporan mandiri di tabel komentar
 define('LAPORAN_MANDIRI', 775);
@@ -135,6 +139,7 @@ define("KODE_HUBUNGAN", serialize(array(
 )));
 define("KODE_PENDIDIKAN", serialize(array(
 	strtolower("Tidak/Belum Sekolah") => "1",
+	strtolower("Tidak/Blm Sekolah") => "1",
 	strtolower("Belum Tamat SD/Sederajat") => "2",
 	strtolower("Tidak Tamat SD/Sederajat") => "2",
 	strtolower("Tamat SD/Sederajat") => "3",
@@ -143,8 +148,10 @@ define("KODE_PENDIDIKAN", serialize(array(
 	strtolower("SLTA/Sederajat") => "5",
 	strtolower("Diploma I/II") => "6",
 	strtolower("Akademi/Diploma III/S. Muda") => "7",
+	strtolower("Akademi/Diploma III/Sarjana Muda") => "7",
 	strtolower("Diploma IV/Strata I") => "8",
 	strtolower("Strata II") => "9",
+	strtolower("Strata-II") => "9",
 	strtolower("Strata III") => "10"
 )));
 define("KODE_PEKERJAAN", serialize(array(
@@ -153,8 +160,11 @@ define("KODE_PEKERJAAN", serialize(array(
 	strtolower("PELAJAR/MAHASISWA") => "3",
 	strtolower("PENSIUNAN") => "4",
 	strtolower("PEGAWAI NEGERI SIPIL") => "5",
+	strtolower("PEGAWAI NEGERI SIPIL (PNS)") => "5",
 	strtolower("TENTARA NASIONAL INDONESIA") => "6",
+	strtolower("TENTARA NASIONAL INDONESIA (TNI)") => "6",
 	strtolower("KEPOLISIAN RI") => "7",
+	strtolower("KEPOLISIAN RI (POLRI)") => "7",
 	strtolower("PERDAGANGAN") => "8",
 	strtolower("PETANI/PEKEBUN") => "9",
 	strtolower("PETERNAK") => "10",
@@ -236,6 +246,7 @@ define("KODE_PEKERJAAN", serialize(array(
 	strtolower("KEPALA DESA") => "86",
 	strtolower("BIARAWATI") => "87",
 	strtolower("WIRASWASTA") => "88",
+	strtolower("PEKERJAAN LAINNYA") => "89",
 	strtolower("LAINNYA") => "89"
 )));
 define("KODE_GOLONGAN_DARAH", serialize(array(
@@ -426,12 +437,14 @@ function httpPost($url, $params)
 
 	$postData = '';
 	//create name value pairs seperated by &
-	foreach ($params as $k => $v) {
+	foreach ($params as $k => $v)
+	{
 		$postData .= $k . '=' . $v . '&';
 	}
 	$postData = rtrim($postData, '&');
 
-	try {
+	try
+	{
 		$ch = curl_init();
 
 		curl_setopt($ch, CURLOPT_URL, $url);
@@ -440,21 +453,27 @@ function httpPost($url, $params)
 		curl_setopt($ch, CURLOPT_POST, count($postData));
 		curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
 
-		// Paksa tidak menunggu hasil tracker
-		curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
+		// Batasi waktu koneksi dan ambil data, supaya tidak menggantung kalau ada error koneksi
+		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 4);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+
+		/*curl_setopt($ch, CURLOPT_FORBID_REUSE, true);
 		curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 1);
 		curl_setopt($ch, CURLOPT_DNS_CACHE_TIMEOUT, 10);
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, true);
-		curl_setopt($ch, CURLOPT_TIMEOUT, 1);
+		curl_setopt($ch, CURLOPT_TIMEOUT, 1);*/
 		$output = curl_exec($ch);
 
-		if ($output === false) {
-			// echo 'Curl error: ' . curl_error($ch);
+		if ($output === false)
+		{
+			log_message('error', 'Curl error: ' . curl_error($ch));
+			log_message('error', print_r(curl_getinfo($ch), true));
 		}
 		curl_close($ch);
 		return $output;
 	}
-	catch (Exception $e) {
+	catch (Exception $e)
+	{
 		return $e;
 	}
 }
@@ -658,8 +677,11 @@ function xcopy($src, $dest)
 
 function sql_in_list($list_array)
 {
+	if (empty($list_array)) return FALSE;
+
 	$prefix = $list = '';
-	foreach ($list_array as $key => $value) {
+	foreach ($list_array as $key => $value)
+	{
 		$list .= $prefix . "'" . $value . "'";
 		$prefix = ', ';
 	}
@@ -724,6 +746,13 @@ function autocomplete_data_ke_str($data)
 	}
 	$str = '[' . strtolower(substr($str, 1)) . ']';
 	return $str;
+}
+
+// Periksa apakah nilai bilangan Romawi
+// https://recalll.co/?q=How%20to%20convert%20a%20Roman%20numeral%20to%20integer%20in%20PHP?&type=code
+function is_angka_romawi($roman) {
+  $roman_regex='/^M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})$/';
+  return preg_match($roman_regex, $roman) > 0;
 }
 
 function bulan_romawi($bulan)
@@ -895,6 +924,13 @@ function buat_slug($data_slug)
 	return $slug;
 }
 
+function namafile($str)
+{
+	$tgl =  date('d_m_Y');
+	$filename = urlencode(underscore(strtolower($str))."_".$tgl);
+	return $filename;
+}
+
 function luas($int=0, $satuan="meter")
 {
 	if (($int / 10000) >= 1)
@@ -942,9 +978,10 @@ function ket_mutasi_persil($id=0)
 	return $ket;
 }
 
-function status_sukses($outp, $gagal_saja=false)
+function status_sukses($outp, $gagal_saja=false, $msg='')
 {
 	$CI =& get_instance();
+	if ($msg) $CI->session->error_msg = $msg;
 	if ($gagal_saja)
 	{
 		if (!$outp) $CI->session->success = -1;
@@ -1035,4 +1072,19 @@ function crawler()
 	}
 
 	return FALSE;
+}
+
+// Kode Wilayah Dengan Titik
+// Dari 5201142005 --> 52.01.14.2005
+function kode_wilayah($kode_wilayah)
+{
+	$kode_prov_kab_kec = str_split(substr($kode_wilayah, 0, 6), 2);
+	$kode_desa = (strlen($kode_wilayah) > 6) ? '.' . substr($kode_wilayah, 6) : '';
+	$kode_standar = implode('.', $kode_prov_kab_kec) . $kode_desa;
+	return $kode_standar;
+}
+
+function pre_print_r($data)
+{
+	print("<pre>".print_r($data, true)."</pre>");
 }

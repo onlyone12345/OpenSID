@@ -223,7 +223,7 @@ $config['allow_get_array'] = TRUE;
 | your log files will fill up very fast.
 |
 */
-$config['log_threshold'] = ENVIRONMENT === 'development' ? 4 : 1;
+$config['log_threshold'] = ENVIRONMENT === 'development' ? 1 : 1;
 
 /*
 |--------------------------------------------------------------------------
@@ -293,7 +293,7 @@ $config['error_views_path'] = '';
 | application/cache/ directory.  Use a full server path with trailing slash.
 |
 */
-$config['cache_path'] = '';
+$config['cache_path'] = 'cache/';
 
 /*
 |--------------------------------------------------------------------------

@@ -1,5 +1,50 @@
 <?php
 
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+/**
+ * File ini:
+ *
+ * Model untuk modul Database
+ *
+ * donjo-app/models/Database_model.php
+ *
+ */
+
+/**
+ *
+ * File ini bagian dari:
+ *
+ * OpenSID
+ *
+ * Sistem informasi desa sumber terbuka untuk memajukan desa
+ *
+ * Aplikasi dan source code ini dirilis berdasarkan lisensi GPL V3
+ *
+ * Hak Cipta 2009 - 2015 Combine Resource Institution (http://lumbungkomunitas.net/)
+ * Hak Cipta 2016 - 2020 Perkumpulan Desa Digital Terbuka (https://opendesa.id)
+ *
+ * Dengan ini diberikan izin, secara gratis, kepada siapa pun yang mendapatkan salinan
+ * dari perangkat lunak ini dan file dokumentasi terkait ("Aplikasi Ini"), untuk diperlakukan
+ * tanpa batasan, termasuk hak untuk menggunakan, menyalin, mengubah dan/atau mendistribusikan,
+ * asal tunduk pada syarat berikut:
+ *
+ * Pemberitahuan hak cipta di atas dan pemberitahuan izin ini harus disertakan dalam
+ * setiap salinan atau bagian penting Aplikasi Ini. Barang siapa yang menghapus atau menghilangkan
+ * pemberitahuan ini melanggar ketentuan lisensi Aplikasi Ini.
+ *
+ * PERANGKAT LUNAK INI DISEDIAKAN "SEBAGAIMANA ADANYA", TANPA JAMINAN APA PUN, BAIK TERSURAT MAUPUN
+ * TERSIRAT. PENULIS ATAU PEMEGANG HAK CIPTA SAMA SEKALI TIDAK BERTANGGUNG JAWAB ATAS KLAIM, KERUSAKAN ATAU
+ * KEWAJIBAN APAPUN ATAS PENGGUNAAN ATAU LAINNYA TERKAIT APLIKASI INI.
+ *
+ * @package	OpenSID
+ * @author	Tim Pengembang OpenDesa
+ * @copyright	Hak Cipta 2009 - 2015 Combine Resource Institution (http://lumbungkomunitas.net/)
+ * @copyright	Hak Cipta 2016 - 2020 Perkumpulan Desa Digital Terbuka (https://opendesa.id)
+ * @license	http://www.gnu.org/licenses/gpl.html	GPL V3
+ * @link 	https://github.com/OpenSID/OpenSID
+ */
+
 class Database_model extends CI_Model {
 
 	private $user = 1;
@@ -43,12 +88,26 @@ class Database_model extends CI_Model {
 		'20.05' => array('migrate' => 'migrasi_2005_ke_2006', 'nextVersion' => '20.06'),
 		'20.06' => array('migrate' => 'migrasi_2006_ke_2007', 'nextVersion' => '20.07'),
 		'20.07' => array('migrate' => 'migrasi_2007_ke_2008', 'nextVersion' => '20.08'),
-		'20.08' => array('migrate' => NULL, 'nextVersion' => NULL)
+		'20.08' => array('migrate' => 'migrasi_2008_ke_2009', 'nextVersion' => '20.09'),
+		'20.09' => array('migrate' => 'migrasi_2009_ke_2010', 'nextVersion' => '20.10'),
+		'20.10' => array('migrate' => 'migrasi_2010_ke_2011', 'nextVersion' => '20.11'),
+		'20.11' => array('migrate' => 'migrasi_2011_ke_2012', 'nextVersion' => '20.12'),
+		'20.12' => array('migrate' => 'migrasi_2012_ke_2101', 'nextVersion' => '21.01'),
+		'21.01' => array('migrate' => 'migrasi_2101_ke_2102', 'nextVersion' => '21.02'),
+		'21.02' => array('migrate' => 'migrasi_2102_ke_2103', 'nextVersion' => '21.03'),
+		'21.03' => array('migrate' => 'migrasi_2103_ke_2104', 'nextVersion' => '21.04'),
+		'21.04' => array('migrate' => 'migrasi_2104_ke_2105', 'nextVersion' => '21.05'),
+		'21.05' => array('migrate' => 'migrasi_2105_ke_2106', 'nextVersion' => '21.06'),
+		'21.06' => array('migrate' => 'migrasi_2106_ke_2107', 'nextVersion' => '21.07'),
+		'21.07' => array('migrate' => NULL, 'nextVersion' => null)
 	);
 
 	public function __construct()
 	{
 		parent::__construct();
+
+		$this->load->dbutil();
+		if( ! $this->dbutil->database_exists($this->db->database)) return;
 
 		$this->cek_engine_db();
 		$this->load->dbforge();
@@ -99,6 +158,10 @@ class Database_model extends CI_Model {
 
 	public function migrasi_db_cri()
 	{
+		// Tunggu restore selesai sebelum migrasi
+		if (isset($this->session->sedang_restore) && $this->session->sedang_restore == 1) return;
+
+	 	$_SESSION['success'] = 1;
 		$versi = $this->getCurrentVersion();
 		$nextVersion = $versi;
 		$versionMigrate = $this->versionMigrate;
@@ -119,6 +182,9 @@ class Database_model extends CI_Model {
 		{
 			$this->_migrasi_db_cri();
 		}
+		// Jalankan migrasi untuk fitur premium
+		$this->jalankan_migrasi('migrasi_fitur_premium');
+
 		$this->folder_desa_model->amankan_folder_desa();
 		$this->surat_master_model->impor_surat_desa();
 		$this->db->where('id', 13)->update('setting_aplikasi', array('value' => TRUE));
@@ -127,7 +193,7 @@ class Database_model extends CI_Model {
 			'pasca-<versi>' atau '<versi>-pasca disimpan sebagai '<versi>'
 		*/
 		$versi = AmbilVersi();
-		$versi = preg_replace('/pasca-|-pasca/', '', $versi);
+		$versi = preg_replace('/pasca-|-pasca|-premium|-premium-pasca/', '', $versi);
 		$newVersion = array(
 			'value' => $versi
 		);
@@ -135,7 +201,6 @@ class Database_model extends CI_Model {
 		$this->load->model('track_model');
 		$this->track_model->kirim_data();
 		$this->catat_versi_database();
-	 	$_SESSION['success'] = 1;
   }
 
   private function catat_versi_database()
@@ -164,17 +229,26 @@ class Database_model extends CI_Model {
   	// Tidak lakukan apa-apa
   }
 
+  private function versi_database_terbaru()
+  {
+		$sudah = false;
+		if ($this->db->table_exists('migrasi') )
+			$sudah = $this->db->where('versi_database', VERSI_DATABASE)
+				->get('migrasi')->num_rows();
+		return $sudah;
+  }
+
 	// Cek apakah migrasi perlu dijalankan
 	public function cek_migrasi()
 	{
 		// Paksa menjalankan migrasi kalau belum
 		// Migrasi direkam di tabel migrasi
-		$sudah = false;
-		if ($this->db->table_exists('migrasi') )
-			$sudah = $this->db->where('versi_database', VERSI_DATABASE)
-				->get('migrasi')->num_rows();
-		if (!$sudah)
+		if ( ! $this->versi_database_terbaru())
 		{
+			// Ulangi migrasi terakhir
+			$terakhir = key(array_slice($this->versionMigrate, -1, 1, true));
+			$sebelumnya = key(array_slice($this->versionMigrate, -2, 1, true));
+			$this->versionMigrate[$terakhir]['migrate'] ?: $this->versionMigrate[$terakhir]['migrate'] = $this->versionMigrate[$sebelumnya]['migrate'];
 			$this->migrasi_db_cri();
 		}
 	}
@@ -242,6 +316,9 @@ class Database_model extends CI_Model {
 		$this->jalankan_migrasi('migrasi_2005_ke_2006');
 		$this->jalankan_migrasi('migrasi_2006_ke_2007');
 		$this->jalankan_migrasi('migrasi_2007_ke_2008');
+		$this->jalankan_migrasi('migrasi_2008_ke_2009');
+		$this->jalankan_migrasi('migrasi_2009_ke_2010');
+		$this->jalankan_migrasi('migrasi_2010_ke_2011');
   }
 
   private function jalankan_migrasi($migrasi)

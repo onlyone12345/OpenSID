@@ -74,13 +74,13 @@ $(document).ready(function () {
 		'rowReorder': {
 			'selector': 'td:nth-child(2)'
 		},
-		'ajax': SITE_URL + '/first/ajax_table_surat_permohonan',
+		'ajax': SITE_URL + '/mandiri_web/ajax_table_surat_permohonan',
 		'language': {
 			url: BASE_URL + '/assets/bootstrap/js/dataTables.indonesian.lang'
 		},
     "columnDefs": [
 	   {
-        "targets": [ 4, 5 ],
+        "targets": [ 5, 6 ],
         "visible": false
 	    }
 		],
@@ -91,7 +91,7 @@ $(document).ready(function () {
 				'mData': 'aksi',
 				'mRender': function (data, type, row) {
 					let action = ``;
-					if (row[1] && row[5] == 1) {
+					if (row[1] && row[6] == 1) {
 						action = `<button type="button" class="btn bg-orange btn-flat btn-sm edit text-center" data-toggle="modal" data-target="#modal" data-title="Ubah Data" title="Ubah Data"  title="Ubah Data" data-id="${row[1]}"><i class="fa fa-edit"></i></button> <button type="button" class="btn bg-red btn-flat btn-sm delete text-center" title="Hapus Data" data-id="${row[1]}"><i class="fa fa-trash"></i> Hapus</button>`;
 					}
 					return action;
@@ -115,7 +115,7 @@ $(document).ready(function () {
 		$('#file').removeClass('required');
 		$('#modal .modal-body').LoadingOverlay('show');
 		$.ajax({
-			url: SITE_URL + '/first/ajax_get_dokumen_pendukung',
+			url: SITE_URL + '/mandiri_web/ajax_get_dokumen_pendukung',
 			type: 'POST',
 			data: {
 				id_dokumen: id
@@ -166,7 +166,7 @@ $(document).ready(function () {
 					'action': function() {
 						$('#modal .modal-body').LoadingOverlay('show');
 						$.ajax({
-							url: SITE_URL + '/first/ajax_hapus_dokumen_pendukung',
+							url: SITE_URL + '/mandiri_web/ajax_hapus_dokumen_pendukung',
 							type: 'POST',
 							data: {
 								id_dokumen: id
@@ -199,7 +199,7 @@ $(document).ready(function () {
 		if ($(this).valid()) {
 			$('#modal .modal-body').LoadingOverlay("show");
 			$.ajax({
-				url: SITE_URL + '/first/ajax_upload_dokumen_pendukung',
+				url: SITE_URL + '/mandiri_web/ajax_upload_dokumen_pendukung',
 				type: 'POST',
 				data: new FormData(this),
 				processData: false,

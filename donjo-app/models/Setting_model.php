@@ -1,6 +1,22 @@
 <?php defined('BASEPATH') OR exit('No direct script access allowed');
 
+define("EKSTENSI_WAJIB", serialize(array(
+	"curl",
+	"fileinfo",
+	"gd",
+	"iconv",
+	"json",
+	"mbstring",
+	"mysqli",
+	"mysqlnd",
+	"tidy",
+	"zip"
+)));
+define("VERSI_PHP_MINIMAL", '7.2.0');
+define("VERSI_MYSQL_MINIMAL", '5.6.5');
+
 class Setting_model extends CI_Model {
+
 
 	public function __construct()
 	{
@@ -8,21 +24,15 @@ class Setting_model extends CI_Model {
 		$pre = array();
 		$CI = &get_instance();
 
-		if ($this->setting)
+		if ($this->setting or ! $this->db->table_exists('setting_aplikasi'))
 		{
 			return;
 		}
+
 		if ($this->config->item("useDatabaseConfig"))
 		{
-			// Paksa menjalankan migrasi kalau tabel setting_aplikasi
-			// belum ada
-			if (!$this->db->table_exists('setting_aplikasi'))
-			{
-				$this->load->model('database_model');
-				$this->database_model->migrasi_db_cri();
-			}
 			$pr = $this->db
-				->where("kategori is null or kategori <> 'sistem' and kategori <> 'conf_web' ")
+				->where("kategori is null or kategori <> 'sistem' and kategori <> 'conf_web' and kategori <> 'setting_mandiri' ")
 				->order_by('key')->get("setting_aplikasi")->result();
 			foreach ($pr as $p)
 			{
@@ -42,15 +52,44 @@ class Setting_model extends CI_Model {
 			{
 				$pre[addslashes($p->key)] = addslashes($p->value);
 			}
+
+			$setting_mandiri = $this->db
+				->where('kategori', 'setting_mandiri')
+				->order_by('key')->get("setting_aplikasi")->result();
+			foreach ($setting_mandiri as $p)
+			{
+				$pre[addslashes($p->key)] = addslashes($p->value);
+			}
+
+			$setting_bagan = $this->db
+				->where('kategori', 'conf_bagan')
+				->order_by('key')->get("setting_aplikasi")->result();
+			foreach ($setting_bagan as $p)
+			{
+				$pre[addslashes($p->key)] = addslashes($p->value);
+			}
 		}
 		else
 		{
 			$pre = (object) $CI->config->config;
 		}
 		$CI->setting = (object) $pre;
-		$CI->list_setting = $pr; // Untuk tampilan daftar setting
+		$CI->list_setting = $this->sterilkan_setting_demo($pr); // Untuk tampilan daftar setting
 		$CI->list_setting_web = $setting_web; // Untuk tampilan daftar setting web
+		$CI->list_setting_mandiri = $setting_mandiri; // Untuk tampilan daftar setting layanan mandiri
+		$CI->list_setting_bagan = $setting_bagan; // Untuk tampilan bagan
 		$this->apply_setting();
+	}
+
+	// Sembunyikan setting yg tidak untuk ditampilkan di demo, seperti token layanan
+	private function sterilkan_setting_demo($pr)
+	{
+		if ( ! config_item('demo_mode')) return $pr;
+		foreach ($pr as $key => $setting)
+		{
+			if ($setting->key == 'layanan_opendesa_token') $pr[$key]->value = '';
+		}
+		return $pr;
 	}
 
 	// Setting untuk PHP
@@ -63,7 +102,13 @@ class Setting_model extends CI_Model {
 		{
 			$this->setting->google_key = config_item('google_key');
 		}
+		// Ambil token tracksid dari desa/config/config.php kalau tidak ada di database
+		if (empty($this->setting->token_opensid))
+		{
+			$this->setting->token_opensid = config_item('token_opensid');
+		}
 		// Ambil dev_tracker dari desa/config/config.php kalau tidak ada di database
+		$this->setting->tracker = "https://pantau.opensid.my.id";
 		if (empty($this->setting->dev_tracker))
 		{
 			$this->setting->dev_tracker = config_item('dev_tracker');
@@ -183,4 +228,39 @@ class Setting_model extends CI_Model {
 		return $rows;
 	}
 
+	public function cek_ekstensi()
+	{
+		$e = get_loaded_extensions();
+		usort($e, 'strcasecmp');
+		$ekstensi = array_flip($e);
+		$e = unserialize(EKSTENSI_WAJIB);
+		usort($e, 'strcasecmp');
+		$ekstensi_wajib = array_flip($e);
+		$lengkap = true;
+		foreach ($ekstensi_wajib as $key => $value)
+		{
+			$ekstensi_wajib[$key] = isset($ekstensi[$key]);
+			$lengkap = $lengkap && $ekstensi_wajib[$key];
+		}
+		$data['lengkap'] = $lengkap;
+		$data['ekstensi'] = $ekstensi_wajib;
+		return $data;
+	}
+
+	public function cek_php()
+	{
+		$data['versi'] = phpversion();
+		$data['versi_minimal'] = VERSI_PHP_MINIMAL;
+		$data['sudah_ok'] = version_compare(phpversion(), VERSI_PHP_MINIMAL) > 0;
+		return $data;
+	}
+
+	public function cek_mysql()
+	{
+		$data['versi'] = $this->db->query('SELECT VERSION() AS version')
+			->row()->version;
+		$data['versi_minimal'] = VERSI_MYSQL_MINIMAL;
+		$data['sudah_ok'] = version_compare($data['versi'], VERSI_MYSQL_MINIMAL) > 0;
+		return $data;
+	}
 }

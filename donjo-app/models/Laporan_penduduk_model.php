@@ -7,7 +7,7 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  *
  * Model untuk modul Statistik Kependudukan
  *
- * donjo-app/models/Laporan_penduduk_model.php,
+ * donjo-app/models/Laporan_penduduk_model.php
  *
  */
 
@@ -184,242 +184,33 @@ class Laporan_penduduk_model extends MY_Model {
 		return $sql;
 	}
 
-	public function link_statistik_penduduk()
-	{
-		$statistik = [
-			"statistik/13" => "Umur (Rentang)",
-			"statistik/15" => "Umur (Kategori)",
-			"statistik/0" => "Pendidikan Dalam KK",
-			"statistik/14" => "Pendidikan Sedang Ditempuh",
-			"statistik/1" => "Pekerjaan",
-			"statistik/2" => "Status Perkawinan",
-			"statistik/3" => "Agama",
-			"statistik/4" => "Jenis Kelamin",
-			"statistik/5" => "Warga Negara",
-			"statistik/6" => "Status Penduduk",
-			"statistik/7" => "Golongan Darah",
-			"statistik/9" => "Penyandang Cacat",
-			"statistik/10" => "Penyakit Menahun",
-			"statistik/16" => "Akseptor KB",
-			"statistik/17" => "Akte Kelahiran",
-			"statistik/18" => "Kepemilikan KTP",
-			"statistik/19" => "Jenis Asuransi",
-			"statistik/covid" => "Status Covid",
-			"statistik/bantuan_penduduk" => "Penerima Bantuan (Penduduk)"
-		];
-
-		return $statistik;
-	}
-
-	public function link_statistik_keluarga()
-	{
-		$statistik = [
-			"statistik/kelas_sosial" => "Kelas Sosial",
-			"statistik/bantuan_keluarga" => "Penerima Bantuan (Keluarga)"
-		];
-
-		return $statistik;
-	}
-
-	public function link_statis_lainnya()
-	{
-		$statistik = array(
-			'dpt' => 'Calon Pemilih',
-			'wilayah' => 'Wilayah Administratif',
-			'peraturan_desa' => 'Produk Hukum',
-			'informasi_publik' => 'Informasi Publik',
-			'peta' => 'Peta'
-		);
-
-		return $statistik;
-	}
-
 	public function judul_statistik($lap)
 	{
 		// Program bantuan berbentuk '50<program_id>'
 		if ($lap > 50)
 		{
 			$program_id = preg_replace("/^50/", "", $lap);
-			$this->db->select("nama");
-			$this->db->where('id', $program_id);
-			$q = $this->db->get('program');
-			$program = $q->row_array();
+
+			$program = $this->db
+				->select('nama')
+				->where('id', $program_id)
+				->get('program')
+				->row_array();
 
 			return $program['nama'];
 		}
 
-		switch ("$lap")
-		{
-			case "kelas_sosial": return "Klasifikasi Sosial"; break;
-			case "0": return "Pendidikan Dalam KK"; break;
-			case "1": return "Pekerjaan"; break;
-			case "2": return "Status Perkawinan"; break;
-			case "3": return "Agama"; break;
-			case "4": return "Jenis Kelamin"; break;
-			case "5": return "Warga Negara"; break;
-			case "6": return "Status"; break;
-			case "7": return "Golongan Darah"; break;
-			case "9": return "Cacat"; break;
-			case "10": return "Sakit Menahun"; break;
-			case "13": return "Rentang Umur"; break;
-			case "14": return "Pendidikan Sedang Ditempuh"; break;
-			case "15": return "Kategori Umur"; break;
-			case "16": return "Akseptor KB"; break;
-			case "17": return "Akte Kelahiran"; break;
-			case "18": return "Kepemilikan Wajib KTP"; break;
-			case "19": return "Jenis Asuransi"; break;
-			case "covid": return "Status Covid"; break;
-			case "21": return "Klasifikasi Sosial"; break;
-			case "24": return "Penerima BOS"; break;
-			case "bantuan_penduduk": return "Penerima Bantuan (Penduduk)"; break;
-			case "bantuan_keluarga": return "Penerima Bantuan (Keluarga)"; break;
-			default: return NULL;
-		}
-	}
+		$list_judul = unserialize(STAT_PENDUDUK) + unserialize(STAT_KELUARGA) + unserialize(STAT_BANTUAN);
 
-	public function jenis_laporan($lap)
-	{
-		$jenis_laporan = "penduduk";
-		if ($lap>50)
-		{
-			// Untuk program bantuan, $lap berbentuk '50<program_id>'
-			$program_id = preg_replace('/^50/', '', $lap);
-			$program = $this->program_bantuan_model->get_sasaran($program_id);
-			// Hanya sasaran=1 yang sasarannya penduduk, yang lain keluarga atau kelompok
-			if ($program['sasaran'] != 1) $jenis_laporan = "keluarga_kelompok";
-		}
-		elseif ($lap>20)
-		{
-			$jenis_laporan = "keluarga_kelompok";
-		}
-
-		return $jenis_laporan;
-	}
-
-	// $lap berbentuk '50<program_id>'
-	public function statistik_program_bantuan($lap=0)
-	{
-		$program_id = preg_replace('/^50/', '', $lap);
-		$program = $this->program_bantuan_model->get_sasaran($program_id);
-		switch ($program['sasaran'])
-		{
-			case 1:
-				# Data penduduk
-			$sql = "SELECT
-			(SELECT COUNT(p.id) FROM program_peserta p
-			LEFT JOIN tweb_penduduk o ON p.peserta = o.nik
-			WHERE p.program_id = $program_id AND o.status_dasar = 1) AS jumlah,
-			(SELECT COUNT(p.id) FROM program_peserta p
-			LEFT JOIN tweb_penduduk o ON p.peserta = o.nik
-			WHERE p.program_id = $program_id AND o.sex = 1 AND o.status_dasar = 1) AS laki,
-			(SELECT COUNT(p.id) FROM program_peserta p
-			LEFT JOIN tweb_penduduk o ON p.peserta = o.nik
-			WHERE p.program_id = $program_id AND o.sex = 2 AND o.status_dasar = 1) AS perempuan";
-				//Total Sasaran
-			$sql_sasaran = "SELECT
-			(SELECT COUNT(s.id) FROM tweb_penduduk s WHERE s.status_dasar=1) AS jumlah,
-			(SELECT COUNT(s.id) FROM tweb_penduduk s WHERE s.sex = 1 and s.status_dasar=1) AS laki,
-			(SELECT COUNT(s.id) FROM tweb_penduduk s WHERE s.sex = 2 and s.status_dasar=1) AS perempuan";
-			break;
-			case 2:
-				# Data KK
-				# Kolom laki dan perempuan tidak dipakai
-			$sql = "SELECT
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS jumlah,
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS laki,
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS perempuan
-			";
-				//Total Sasaran
-			$sql_sasaran = "SELECT
-			(SELECT COUNT(s.id) FROM keluarga_aktif s) AS jumlah,
-			(SELECT COUNT(s.id) FROM keluarga_aktif s) AS laki,
-			(SELECT COUNT(s.id) FROM keluarga_aktif s) AS perempuan";
-			break;
-			case 3:
-				# Data Rumah Tangga
-				# Kolom laki dan perempuan tidak dipakai
-			$sql = "SELECT
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS jumlah,
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS laki,
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS perempuan
-			";
-				//Total Sasaran
-			$sql_sasaran = "SELECT
-			(SELECT COUNT(s.id) FROM tweb_rtm s) AS jumlah,
-			(SELECT COUNT(s.id) FROM tweb_rtm s) AS laki,
-			(SELECT COUNT(s.id) FROM tweb_rtm s) AS perempuan";
-			break;
-			case 4:
-				# Data Kelompok
-				# Kolom laki dan perempuan tidak dipakai
-			$sql = "SELECT
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS jumlah,
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS laki,
-			(SELECT COUNT(p.id) FROM program_peserta p WHERE p.program_id = $program_id) AS perempuan
-			";
-				//Total Sasaran
-			$sql_sasaran = "SELECT
-			(SELECT COUNT(s.id) FROM kelompok s) AS jumlah,
-			(SELECT COUNT(s.id) FROM kelompok s) AS laki,
-			(SELECT COUNT(s.id) FROM kelompok s) AS perempuan";
-			break;
-
-			default:
-				# Tidak lakukan apa-apa
-			break;
-		}
-
-		// Peserta
-		$query = $this->db->query($sql);
-		$data = $query->result_array();
-		$data[0]['no'] = 1;
-		$data[0]['nama'] ="PESERTA";
-
-		// Total sasaran
-		$query_sasaran = $this->db->query($sql_sasaran);
-		$bel = $query_sasaran->row_array();
-
-		// Yang tidak terdaftar
-		$data[1]['no'] = 2;
-		$data[1]['id'] = "";
-		$data[1]['nama'] = "BUKAN PESERTA";
-		$data[1]['jumlah'] = $bel['jumlah'] - $data[0]['jumlah'];
-		$data[1]['perempuan'] = $bel['perempuan'] - $data[0]['perempuan'];
-		$data[1]['laki'] = $bel['laki'] - $data[0]['laki'];
-
-		$total['jumlah'] = 0;
-		$total['laki'] = 0;
-		$total['perempuan'] = 0;
-		for ($i=0; $i<count($data); $i++)
-		{
-			$data[$i]['no'] = $i + 1;
-			$total['jumlah'] += $data[$i]['jumlah'];
-			$total['laki'] += $data[$i]['laki'];
-			$total['perempuan'] += $data[$i]['perempuan'];
-		}
-
-		for ($i=0; $i<count($data); $i++)
-		{
-			$data[$i]['persen'] = persen($data[$i]['jumlah'] / $bel['jumlah']);
-			$data[$i]['persen1'] = persen($data[$i]['laki'] / $bel['jumlah']);
-			$data[$i]['persen2'] = persen($data[$i]['perempuan'] / $bel['jumlah']);
-		}
-
-		$bel['no'] = "";
-		$bel['id'] = "";
-		$bel['nama'] = "TOTAL";
-		$bel['persen'] = persen(($bel['laki'] + $bel['perempuan']) / $bel['jumlah']);
-		$bel['persen1'] = persen($bel['laki'] / $bel['jumlah']);
-		$bel['persen2'] = persen($bel['perempuan'] / $bel['jumlah']);
-		$data['total'] = $bel;
-
-		return $data;
+		return $list_judul[$lap];
 	}
 
 	// -------------------- Siapkan data untuk statistik kependudukan -------------------
 
 	protected function hitung_total(&$data)
 	{
+		$total['no'] = "";
+		$total['id'] = TOTAL;
 		$total['jumlah'] = 0;
 		$total['laki'] = 0;
 		$total['perempuan'] = 0;
@@ -481,6 +272,12 @@ class Laporan_penduduk_model extends MY_Model {
 			'perempuan' => $semua['perempuan'] - $total['perempuan'],
 			'laki' => $semua['laki'] - $total['laki']
 		);
+		if (isset($total['jumlah_nonaktif']))
+		{
+			$baris_belum['jumlah'] += $total['jumlah_nonaktif'];
+			$baris_belum['perempuan'] += $total['jumlah_nonaktif_perempuan'];
+			$baris_belum['laki'] += $total['jumlah_nonaktif_laki'];
+		}
 
 		return $baris_belum;
 	}
@@ -526,7 +323,7 @@ class Laporan_penduduk_model extends MY_Model {
 		->select('COUNT(k.id) as jumlah')
 		->select('COUNT(CASE WHEN p.sex = 1 THEN p.id END) AS laki')
 		->select('COUNT(CASE WHEN p.sex = 2 THEN p.id END) AS perempuan')
-		->from('tweb_keluarga k')
+		->from('keluarga_aktif k')
 		->join('tweb_penduduk p', 'p.id=k.nik_kepala', 'left')
 		->get()->row_array();
 
@@ -537,7 +334,7 @@ class Laporan_penduduk_model extends MY_Model {
 	{
 		// Hitung persentase
 		$semua['no'] = "";
-		$semua['id'] = "";
+		$semua['id'] = TOTAL;
 		$semua['nama'] = "TOTAL";
 		$semua['persen'] = persen(($semua['laki'] + $semua['perempuan']) / $semua['jumlah']);
 		$semua['persen1'] = persen($semua['laki'] / $semua['jumlah']);
@@ -599,6 +396,7 @@ class Laporan_penduduk_model extends MY_Model {
 			"2" => array('id_referensi' => "status_kawin", 'tabel_referensi' => "tweb_penduduk_kawin"),
 			"3" => array('id_referensi' => "agama_id", 'tabel_referensi' => "tweb_penduduk_agama"),
 			"4" => array('id_referensi' => "sex", 'tabel_referensi' => "tweb_penduduk_sex"),
+			"hubungan_kk" => array('id_referensi' => "kk_level", 'tabel_referensi' => "tweb_penduduk_hubungan"),
 			"5" => array('id_referensi' => "warganegara_id", 'tabel_referensi' => "tweb_penduduk_warganegara"),
 			"6" => array('id_referensi' => "status", 'tabel_referensi' => "tweb_penduduk_status"),
 			"7" => array('id_referensi' => "golongan_darah_id", 'tabel_referensi' => "tweb_golongan_darah"),
@@ -613,80 +411,80 @@ class Laporan_penduduk_model extends MY_Model {
 		{
 			//Bagian Keluarga
 			case 'kelas_sosial':
-			$this->db
-			->select('u.*, COUNT(k.id) as jumlah')
-			->select('COUNT(CASE WHEN kelas_sosial = u.id AND p.sex = 1 THEN p.id END) AS laki')
-			->select('COUNT(CASE WHEN kelas_sosial = u.id AND p.sex = 2 THEN p.id END) AS perempuan')
-			->from('tweb_keluarga_sejahtera u')
-			->join('tweb_keluarga k', 'k.kelas_sosial = u.id', 'left')
-			->join('tweb_penduduk p', 'p.id=k.nik_kepala', 'left')
-			->group_by('u.id');
-			break;
+				$this->db
+				->select('u.*, COUNT(k.id) as jumlah')
+				->select('COUNT(CASE WHEN kelas_sosial = u.id AND p.sex = 1 THEN p.id END) AS laki')
+				->select('COUNT(CASE WHEN kelas_sosial = u.id AND p.sex = 2 THEN p.id END) AS perempuan')
+				->from('tweb_keluarga_sejahtera u')
+				->join('keluarga_aktif k', 'k.kelas_sosial = u.id', 'left')
+				->join('tweb_penduduk p', 'p.id=k.nik_kepala', 'left')
+				->group_by('u.id');
+				break;
 
 			//STATUS_COVID
 			case 'covid':
-			$this->db
-			->select('u.*, COUNT(k.id) as jumlah')
-			->select('COUNT(CASE WHEN k.status_covid = u.nama AND p.sex = 1 THEN k.id_terdata END) AS laki')
-			->select('COUNT(CASE WHEN k.status_covid = u.nama AND p.sex = 2 THEN k.id_terdata END) AS perempuan')
-			->from('ref_status_covid u')
-			->join('covid19_pemudik k', 'k.status_covid = u.nama', 'left')
-			->join('tweb_penduduk p', 'p.id=k.id_terdata', 'left')
-			->group_by('u.id');
-			break;
+				$this->db
+				->select('u.*, COUNT(k.id) as jumlah')
+				->select('COUNT(CASE WHEN k.status_covid = u.nama AND p.sex = 1 THEN k.id_terdata END) AS laki')
+				->select('COUNT(CASE WHEN k.status_covid = u.nama AND p.sex = 2 THEN k.id_terdata END) AS perempuan')
+				->from('ref_status_covid u')
+				->join('covid19_pemudik k', 'k.status_covid = u.nama', 'left')
+				->join('tweb_penduduk p', 'p.id=k.id_terdata', 'left')
+				->group_by('u.id');
+				break;
 
 			//penerima_bantuan
 			case 'bantuan_penduduk': $sql =
-			"SELECT u.*,
-			(SELECT COUNT(kartu_nik) FROM program_peserta WHERE program_id = u.id) AS jumlah,
-			(SELECT COUNT(k.kartu_nik) FROM program_peserta k INNER JOIN tweb_penduduk p ON k.kartu_nik=p.nik WHERE program_id = u.id AND p.sex = 1) AS laki,
-			(SELECT COUNT(k.kartu_nik) FROM program_peserta k INNER JOIN tweb_penduduk p ON k.kartu_nik=p.nik WHERE program_id = u.id AND p.sex = 2) AS perempuan
-			FROM program u";
-			break;
+				"SELECT u.*,
+				(SELECT COUNT(kartu_nik) FROM program_peserta WHERE program_id = u.id) AS jumlah,
+				(SELECT COUNT(k.kartu_nik) FROM program_peserta k INNER JOIN tweb_penduduk p ON k.kartu_nik=p.nik WHERE program_id = u.id AND p.sex = 1) AS laki,
+				(SELECT COUNT(k.kartu_nik) FROM program_peserta k INNER JOIN tweb_penduduk p ON k.kartu_nik=p.nik WHERE program_id = u.id AND p.sex = 2) AS perempuan
+				FROM program u";
+				break;
 
 			case in_array($lap, array_keys($statistik_penduduk)):
-			$this->select_jml_penduduk_per_kategori($statistik_penduduk["$lap"]['id_referensi'], $statistik_penduduk["$lap"]['tabel_referensi']);
-			break;
+				$this->select_jml_penduduk_per_kategori($statistik_penduduk["$lap"]['id_referensi'], $statistik_penduduk["$lap"]['tabel_referensi']);
+				break;
 
 			case "13":
-				// Umur rentang
-			$where = "(DATE_FORMAT(FROM_DAYS(TO_DAYS( NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0)>=u.dari AND (DATE_FORMAT(FROM_DAYS( TO_DAYS(NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0) <= u.sampai";
-			$this->select_jml($where);
-			$this->db->select('u.*')
-			->from('tweb_penduduk_umur u')
-			->where('u.status', "1");
-			break;
+					// Umur rentang
+				$where = "(DATE_FORMAT(FROM_DAYS(TO_DAYS( NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0)>=u.dari AND (DATE_FORMAT(FROM_DAYS( TO_DAYS(NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0) <= u.sampai";
+				$this->select_jml($where);
+				$this->db->select('u.*')
+				->from('tweb_penduduk_umur u')
+				->where('u.status', "1");
+				break;
 
 			case "15":
-				// Umur kategori
-			$where = "(DATE_FORMAT(FROM_DAYS(TO_DAYS( NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0)>=u.dari AND (DATE_FORMAT(FROM_DAYS( TO_DAYS(NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0) <= u.sampai ";
-			$this->select_jml($where);
-			$this->db->select("u.*, concat(u.nama, ' (', u.dari, ' - ', u.sampai, ')') as nama")
-			->from('tweb_penduduk_umur u')
-			->where('u.status', "0");
-			break;
+					// Umur kategori
+				$where = "(DATE_FORMAT(FROM_DAYS(TO_DAYS( NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0)>=u.dari AND (DATE_FORMAT(FROM_DAYS( TO_DAYS(NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0) <= u.sampai ";
+				$this->select_jml($where);
+				$this->db->select("u.*, concat(u.nama, ' (', u.dari, ' - ', u.sampai, ')') as nama")
+				->from('tweb_penduduk_umur u')
+				->where('u.status', "0");
+				break;
 
 			case "17":
-				// Akta kelahiran
-			$where = "(DATE_FORMAT(FROM_DAYS(TO_DAYS( NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0)>=u.dari AND (DATE_FORMAT(FROM_DAYS( TO_DAYS(NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0) <= u.sampai AND akta_lahir <> '' ";
-			$this->select_jml($where);
-			$this->db->select("u.*, concat('Umur ', u.dari, ' - ', u.sampai) as nama")
-			->from('tweb_penduduk_umur u')
-			->where('u.status', "1");
-			break;
+					// Akta kelahiran
+				$where = "(DATE_FORMAT(FROM_DAYS(TO_DAYS( NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0)>=u.dari AND (DATE_FORMAT(FROM_DAYS( TO_DAYS(NOW()) - TO_DAYS(tanggallahir)) , '%Y')+0) <= u.sampai AND akta_lahir <> '' ";
+				$this->select_jml($where);
+				$this->db->select("u.*, concat('UMUR ', u.dari, ' S/D ', u.sampai, ' TAHUN') as nama")
+				->from('tweb_penduduk_umur u')
+				->where('u.status', "1");
+				break;
 
 			case "18":
-				// Kepemilikan ktp
-			$where = "((DATE_FORMAT(FROM_DAYS(TO_DAYS(NOW()) - TO_DAYS(tanggallahir)), '%Y')+0)>=17 OR (status_kawin IS NOT NULL AND status_kawin <> 1)) AND u.status_rekam = status_rekam ";
-			$this->select_jml($where);
-			$this->db->select("u.*")
-			->from('tweb_status_ktp u');
-			break;
+					// Kepemilikan ktp
+				$where = "((DATE_FORMAT(FROM_DAYS(TO_DAYS(NOW()) - TO_DAYS(tanggallahir)), '%Y')+0)>=17 OR (status_kawin IS NOT NULL AND status_kawin <> 1)) AND u.status_rekam = status_rekam ";
+				$this->select_jml($where);
+				$this->db->select("u.*")
+				->from('tweb_status_ktp u');
+				break;
 
 			default:
-			$this->select_jml_penduduk_per_kategori($statistik_penduduk["0"]['id_referensi'], $statistik_penduduk["0"]['tabel_referensi']);
+				$this->select_jml_penduduk_per_kategori($statistik_penduduk["0"]['id_referensi'], $statistik_penduduk["0"]['tabel_referensi']);
 		}
-
+		return true;
 	}
 
 	protected function get_data_jml()
@@ -710,14 +508,9 @@ class Laporan_penduduk_model extends MY_Model {
 		return $semua;
 	}
 
-	public function list_data($lap=0, $o=0)
+	public function list_data($lap = 0, $o = 0)
 	{
 		$this->lap = $lap;
-		// Laporan program bantuan
-		if ($lap > 50)
-		{
-			return $this->statistik_program_bantuan($lap, $o);
-		}
 
 		$this->load->model('statistik_penduduk_model');
 		if ($statistik = $this->statistik_penduduk_model->statistik($lap))
@@ -734,10 +527,13 @@ class Laporan_penduduk_model extends MY_Model {
 			$judul_belum = 'BELUM MENGISI';
 		}
 
-		$namespace->select_per_kategori();
-		$this->order_by($o);
-		$data = $this->db->get()->result_array();
-		$this->isi_nomor($data);
+		if ($namespace->select_per_kategori())
+		{
+			$this->order_by($o);
+			$data = $this->db->get()->result_array();
+			$this->isi_nomor($data);
+		}
+		else $data = [];
 
 		$semua = $namespace->get_data_jml();
 		$semua = $this->persentase_semua($semua);

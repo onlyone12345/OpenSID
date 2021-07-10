@@ -35,11 +35,11 @@
  * KEWAJIBAN APAPUN ATAS PENGGUNAAN ATAU LAINNYA TERKAIT APLIKASI INI.
  *
  * @package OpenSID
- * @author  Tim Pengembang OpenDesa
+ * @author Tim Pengembang OpenDesa
  * @copyright Hak Cipta 2009 - 2015 Combine Resource Institution (http://lumbungkomunitas.net/)
  * @copyright Hak Cipta 2016 - 2020 Perkumpulan Desa Digital Terbuka (https://opendesa.id)
- * @license http://www.gnu.org/licenses/gpl.html  GPL V3
- * @link  https://github.com/OpenSID/OpenSID
+ * @license http://www.gnu.org/licenses/gpl.html GPL V3
+ * @link https://github.com/OpenSID/OpenSID
  */
 
 defined('BASEPATH') OR exit('No direct script access allowed');
@@ -50,7 +50,6 @@ class First extends Web_Controller {
 	{
 		parent::__construct();
 		parent::clear_cluster_session();
-		session_start();
 
 		// Jika offline_mode dalam level yang menyembunyikan website,
 		// tidak perlu menampilkan halaman website
@@ -70,8 +69,6 @@ class First extends Web_Controller {
 			}
 		}
 
-		mandiri_timeout();
-		$this->load->model('header_model');
 		$this->load->model('config_model');
 		$this->load->model('first_m');
 		$this->load->model('first_artikel_m');
@@ -101,34 +98,6 @@ class First extends Web_Controller {
 		$this->load->model('plan_lokasi_model');
 		$this->load->model('plan_area_model');
 		$this->load->model('plan_garis_model');
-	}
-
-	public function auth()
-	{
-		if ($_SESSION['mandiri_wait'] != 1)
-		{
-			$this->first_m->siteman();
-		}
-		if ($_SESSION['mandiri'] == 1)
-		{
-			redirect('first/mandiri/1/1');
-		}
-		else
-		{
-			redirect('first');
-		}
-	}
-
-	public function logout()
-	{
-		$this->first_m->logout();
-		redirect('first');
-	}
-
-	public function ganti()
-	{
-		$this->first_m->ganti();
-		redirect('first');
 	}
 
 	public function index($p=1)
@@ -176,185 +145,30 @@ class First extends Web_Controller {
 		$this->load->view($this->template, $data);
 	}
 
-	public function cetak_biodata($id='')
-	{
-		if ($_SESSION['mandiri'] != 1)
-		{
-			redirect('first');
-			return;
-		}
-		// Hanya boleh mencetak data pengguna yang login
-		$id = $_SESSION['id'];
-
-		$data['desa'] = $this->config_model->get_data();
-		$data['penduduk'] = $this->penduduk_model->get_penduduk($id);
-		$this->load->view('sid/kependudukan/cetak_biodata',$data);
-	}
-
-	public function cetak_kk($id='')
-	{
-		if ($_SESSION['mandiri'] != 1)
-		{
-			redirect('first');
-			return;
-		}
-		// Hanya boleh mencetak data pengguna yang login
-		$id = $_SESSION['id'];
-
-		// $id adalah id penduduk. Cari id_kk dulu
-		$id_kk = $this->penduduk_model->get_id_kk($id);
-		$data = $this->keluarga_model->get_data_cetak_kk($id_kk);
-
-		$this->load->view("sid/kependudukan/cetak_kk_all", $data);
-	}
-
-	public function kartu_peserta($id=0)
-	{
-		if ($_SESSION['mandiri'] != 1)
-		{
-			redirect('first');
-			return;
-		}
-		$this->load->model('program_bantuan_model');
-		$data = $this->program_bantuan_model->get_program_peserta_by_id($id);
-		// Hanya boleh menampilkan data pengguna yang login
-		// ** Bagi program sasaran pendududk **
-		if ($data['peserta'] == $_SESSION['nik'])
-		{
-			$this->load->view('program_bantuan/kartu_peserta',$data);
-		}
-	}
-
-	public function mandiri($p=1, $m=0, $kat=1)
-	{
-		if ($_SESSION['mandiri'] != 1)
-		{
-			redirect('first');
-		}
-
-		$data = $this->includes;
-		$data['p'] = $p;
-		$data['menu_surat_mandiri'] = $this->surat_model->list_surat_mandiri();
-		$data['m'] = $m;
-		$data['kat'] = $kat;
-
-		$this->_get_common_data($data);
-
-		/* nilai $m
-			1 untuk menu profilku
-			2 untuk menu layanan
-			3 untuk menu lapor
-			4 untuk menu bantuan
-			5 untuk menu surat mandiri
-		*/
-		switch ($m)
-		{
-			case 1:
-				$data['list_kelompok'] = $this->penduduk_model->list_kelompok($_SESSION['id']);
-				$data['list_dokumen'] = $this->penduduk_model->list_dokumen($_SESSION['id']);
-				break;
-			case 21:
-				$data['tab'] = 2;
-				$data['m'] = 2;
-			case 2:
-				$this->load->model('permohonan_surat_model');
-				$data['surat_keluar'] = $this->keluar_model->list_data_perorangan($_SESSION['id']);
-				$data['permohonan'] = $this->permohonan_surat_model->list_permohonan_perorangan($_SESSION['id']);
-				break;
-			case 3:
-				$inbox = $this->mailbox_model->get_inbox_user($_SESSION['nik']);
-				$outbox = $this->mailbox_model->get_outbox_user($_SESSION['nik']);
-				$data['main_list'] = $kat == 1 ? $inbox : $outbox;
-				$data['submenu'] = $this->mailbox_model->list_menu();
-				$_SESSION['mailbox'] = $kat;
-				break;
-			case 4:
-				$this->load->model('program_bantuan_model','pb');
-				$data['daftar_bantuan'] = $this->pb->daftar_bantuan_yang_diterima($_SESSION['nik']);
-				break;
-			case 5:
-				$data['list_dokumen'] = $this->penduduk_model->list_dokumen($_SESSION['id']);
-				break;
-			default:
-				break;
-		}
-		$data['penduduk'] = $this->penduduk_model->get_penduduk($_SESSION['id']);
-		$this->load->view('web/mandiri/layout.mandiri.php', $data);
-	}
-
-	public function mandiri_surat($id_permohonan='')
-	{
-		if ($_SESSION['mandiri'] != 1)
-		{
-			redirect('first');
-		}
-
-		$this->load->model('permohonan_surat_model');
-		$data = $this->includes;
-		$data['menu_surat_mandiri'] = $this->surat_model->list_surat_mandiri();
-		$data['menu_dokumen_mandiri'] = $this->lapor_model->get_surat_ref_all();
-		$data['m'] = 5;
-		$data['permohonan'] = $this->permohonan_surat_model->get_permohonan($id_permohonan);
-		$this->_get_common_data($data);
-		$data['list_dokumen'] = $this->penduduk_model->list_dokumen($_SESSION['id']);
-		$data['penduduk'] = $this->penduduk_model->get_penduduk($_SESSION['id']);
-
-		// Ambil data anggota KK
-		if ($data['penduduk']['kk_level'] === '1') //Jika Kepala Keluarga
-		{
-			$data['kk'] = $this->keluarga_model->list_anggota($data['penduduk']['id_kk']);
-		}
-
-		$this->load->view('web/mandiri/layout.mandiri.php', $data);
-	}
-
-	public function cek_syarat()
-	{
-		$id_permohonan = $this->input->post('id_permohonan');
-		$permohonan = $this->db->where('id', $id_permohonan)
-			->get('permohonan_surat')
-			->row_array();
-		$syarat_permohonan = json_decode($permohonan['syarat'], true);
-		$dokumen = $this->penduduk_model->list_dokumen($_SESSION['id']);
-		$id = $this->input->post('id_surat');
-		$syarat_surat = $this->surat_master_model->get_syarat_surat($id);
-		$data = array();
-		$no = $_POST['start'];
-
-		foreach ($syarat_surat as $no_syarat => $baris)
-		{
-			$no++;
-			$row = array();
-			$row[] = $no;
-			$row[] = $baris['ref_syarat_nama'];
-			// Gunakan view sebagai string untuk mempermudah pembuatan pilihan
-			$pilihan_dokumen = $this->load->view('web/mandiri/pilihan_syarat.php', array('dokumen' => $dokumen, 'syarat_permohonan' => $syarat_permohonan, 'syarat_id' => $baris['ref_syarat_id']), TRUE);
-			$row[] = $pilihan_dokumen;
-			$data[] = $row;
-		}
-
-		$output = array(
-			"recordsTotal" => 10,
-			"recordsFiltered" => 10,
-			'data' => $data
-		);
-		echo json_encode($output);
-	}
-
 	/*
 	| Artikel bisa ditampilkan menggunakan parameter pertama sebagai id, dan semua parameter lainnya dikosongkan. url artikel/:id
 	| Kalau menggunakan slug, dipanggil menggunakan url artikel/:thn/:bln/:hri/:slug
 	*/
 	public function artikel($url)
 	{
+		if (is_numeric($url))
+		{
+			$data_artikel = $this->first_artikel_m->get_artikel_by_id($url);
+			if ($data_artikel)
+			{
+				$data_artikel['slug'] = $this->security->xss_clean($data_artikel['slug']);
+				redirect('artikel/'. buat_slug($data_artikel));
+			}
+		}
 		$this->load->model('shortcode_model');
 		$data = $this->includes;
-
+		$this->first_artikel_m->hit($url); // catat artikel diakses
 		$data['single_artikel'] = $this->first_artikel_m->get_artikel($url);
 		$id = $data['single_artikel']['id'];
 
 		// replace isi artikel dengan shortcodify
 		$data['single_artikel']['isi'] = $this->shortcode_model->shortcode($data['single_artikel']['isi']);
+		$data['title'] = ucwords($data['single_artikel']['judul']);
 		$data['detail_agenda'] = $this->first_artikel_m->get_agenda($id);//Agenda
 		$data['komentar'] = $this->first_artikel_m->list_komentar($id);
 		$this->_get_common_data($data);
@@ -377,13 +191,13 @@ class First extends Web_Controller {
 	{
 		$data = $this->includes;
 		$data['p'] = $p;
-		$data['paging']  = $this->first_artikel_m->paging_arsip($p);
+		$data['paging'] = $this->first_artikel_m->paging_arsip($p);
 		$data['farsip'] = $this->first_artikel_m->full_arsip($data['paging']->offset,$data['paging']->per_page);
 
 		$this->_get_common_data($data);
 
 		$this->set_template('layouts/arsip.tpl.php');
-		$this->load->view($this->template,$data);
+		$this->load->view($this->template, $data);
 	}
 
 	// Halaman arsip album galeri
@@ -433,7 +247,7 @@ class First extends Web_Controller {
 		$data = $this->includes;
 
 		$data['heading'] = $this->laporan_penduduk_model->judul_statistik($stat);
-		$data['jenis_laporan'] = $this->laporan_penduduk_model->jenis_laporan($stat);
+		$data['title'] = 'Statistik '. $data['heading'];
 		$data['stat'] = $this->laporan_penduduk_model->list_data($stat);
 		$data['tipe'] = $tipe;
 		$data['st'] = $stat;
@@ -441,6 +255,25 @@ class First extends Web_Controller {
 		$this->_get_common_data($data);
 
 		$this->set_template('layouts/stat.tpl.php');
+		$this->load->view($this->template, $data);
+	}
+
+	public function kelompok($id)
+	{
+		if ( ! $this->web_menu_model->menu_aktif('kelompok/' . $id)) show_404();
+
+		$data = $this->includes;
+
+		$data['detail'] = $this->kelompok_model->get_kelompok($id);
+		$data['pengurus'] = $this->kelompok_model->list_pengurus($id);
+		$data['anggota'] = $this->kelompok_model->list_anggota($id, $sub='anggota');
+
+		// Jika kelompok tdk tersedia / sudah terhapus pd modul kelompok
+		if ($data['detail'] == NULL) show_404();
+
+		$this->_get_common_data($data);
+
+		$this->set_template('layouts/kelompok.tpl.php');
 		$this->load->view($this->template, $data);
 	}
 
@@ -471,6 +304,8 @@ class First extends Web_Controller {
 
 	public function data_analisis($stat="", $sb=0, $per=0)
 	{
+		if (!$this->web_menu_model->menu_aktif('data_analisis')) show_404();
+
 		$data = $this->includes;
 
 		if ($stat == "")
@@ -498,6 +333,7 @@ class First extends Web_Controller {
 
 		$this->load->model('dpt_model');
 		$data = $this->includes;
+		$data['title'] = 'Daftar Calon Pemilih Berdasarkan Wilayah';
 		$data['main'] = $this->dpt_model->statistik_wilayah();
 		$data['total'] = $this->dpt_model->statistik_total();
 		$data['tanggal_pemilihan'] = $this->dpt_model->tanggal_pemilihan();
@@ -514,8 +350,8 @@ class First extends Web_Controller {
 		$this->load->model('wilayah_model');
 		$data = $this->includes;
 
-		$data['main']    = $this->first_penduduk_m->wilayah();
-		$data['heading']="Populasi Per Wilayah";
+		$data['main'] = $this->wilayah_model->list_semua_wilayah();
+		$data['heading'] = "Populasi Per Wilayah";
 		$data['tipe'] = 3;
 		$data['total'] = $this->wilayah_model->total();
 		$data['st'] = 1;
@@ -535,7 +371,7 @@ class First extends Web_Controller {
 		$data['cek'] = $cek;
 		$data['kategori'] = $this->referensi_model->list_data('ref_dokumen', 1);
 		$data['tahun'] = $this->web_dokumen_model->tahun_dokumen();
-		$data['heading']="Produk Hukum";
+		$data['heading'] = "Produk Hukum";
 		$data['halaman_statis'] = 'web/halaman_statis/peraturan_desa';
 		$this->_get_common_data($data);
 
@@ -573,6 +409,7 @@ class First extends Web_Controller {
 		$data['kategori'] = $this->referensi_model->list_data('ref_dokumen', 1);
 		$data['tahun'] = $this->web_dokumen_model->tahun_dokumen();
 		$data['heading'] ="Informasi Publik";
+		$data['title'] = $data['heading'];
 		$data['halaman_statis'] = 'web/halaman_statis/informasi_publik';
 		$this->_get_common_data($data);
 
@@ -594,7 +431,7 @@ class First extends Web_Controller {
 			$row[] = "<a href='".site_url('dokumen_web/unduh_berkas/').$baris['id']."' target='_blank'>".$baris['nama']."</a>";
 			$row[] = $baris['tahun'];
 			// Ambil judul kategori
-			$row[] = $this->referensi_model->list_kode_array(KATEGORI_PUBLIK)[$baris['kategori_info_publik']];
+			$row[] = $this->referensi_model->list_ref_flip(KATEGORI_PUBLIK)[$baris['kategori_info_publik']];
 			$row[] = $baris['tgl_upload'];
 			$data[] = $row;
 		}
@@ -607,14 +444,15 @@ class First extends Web_Controller {
 		echo json_encode($output);
 	}
 
-	public function kategori($id, $p=1)
+	public function kategori($id, $p = 1)
 	{
 		$data = $this->includes;
 
 		$data['p'] = $p;
 		$data["judul_kategori"] = $this->first_artikel_m->get_kategori($id);
-		$data['paging']  = $this->first_artikel_m->paging_kat($p, $id);
-		$data['paging_page']  = 'kategori/'.$id;
+		$data['title'] = 'Artikel ' . $data['judul_kategori']['kategori'];
+		$data['paging'] = $this->first_artikel_m->paging_kat($p, $id);
+		$data['paging_page'] = 'kategori/' . $id;
 		$data['paging_range'] = 3;
 		$data['start_paging'] = max($data['paging']->start_link, $p - $data['paging_range']);
 		$data['end_paging'] = min($data['paging']->end_link, $p + $data['paging_range']);
@@ -627,9 +465,10 @@ class First extends Web_Controller {
 
 	public function add_comment($id=0, $slug = NULL)
 	{
-		$sql = "SELECT *, YEAR(tgl_upload) AS thn, MONTH(tgl_upload) AS bln, DAY(tgl_upload) AS hri, slug AS slug  FROM artikel a WHERE id=$id ";
-		$query = $this->db->query($sql,1);
-		$data = $query->row_array();
+		$data = $this->db
+			->select("*, YEAR(tgl_upload) AS thn, MONTH(tgl_upload) AS bln, DAY(tgl_upload) AS hri, slug AS slug")
+			->get_where("artikel a",["id" => $id ])
+			->row_array();
 		// Periksa isian captcha
 		include FCPATH . 'securimage/securimage.php';
 		$securimage = new Securimage();
@@ -706,11 +545,12 @@ class First extends Web_Controller {
 		$data['list_dusun'] = $this->penduduk_model->list_dusun();
 		$data['wilayah'] = $this->penduduk_model->list_wil();
 		$data['desa'] = $this->config_model->get_data();
+		$data['title'] = 'Peta ' . ucwords($this->setting->sebutan_desa . ' ' . $data['desa']['nama_desa']);
 		$data['penduduk'] = $this->penduduk_model->list_data_map();
 		$data['dusun_gis'] = $this->wilayah_model->list_dusun();
 		$data['rw_gis'] = $this->wilayah_model->list_rw_gis();
 		$data['rt_gis'] = $this->wilayah_model->list_rt_gis();
-		$data['list_lap'] = $this->referensi_model->list_lap();
+		$data['list_ref'] = $this->referensi_model->list_ref(STAT_PENDUDUK);
 		$data['covid'] = $this->laporan_penduduk_model->list_data('covid');
 		$data['lokasi'] = $this->plan_lokasi_model->list_lokasi();
 		$data['garis'] = $this->plan_garis_model->list_garis();
@@ -757,115 +597,7 @@ class First extends Web_Controller {
 				break;
 		}
 
-		$this->load->view('gis/aparatur_wilayah',$data);
-	}
-
-	public function ajax_table_surat_permohonan()
-	{
-		$data = $this->penduduk_model->list_dokumen($_SESSION['id']);
-		for ($i=0; $i < count($data); $i++)
-		{
-			$berkas = $data[$i]['satuan'];
-			$list_dokumen[$i][] = $data[$i]['no'];
-			$list_dokumen[$i][] = $data[$i]['id'];
-			$list_dokumen[$i][] = "<a href='".site_url("mandiri_web/unduh_berkas/".$data[$i][id])."/{$data[$i][id_pend]}"."'>".$data[$i]["nama"].'</a>';
-			$list_dokumen[$i][] = tgl_indo2($data[$i]['tgl_upload']);
-			$list_dokumen[$i][] = $data[$i]['nama'];
-			$list_dokumen[$i][] = $data[$i]['dok_warga'];
-		}
-		$list['data'] = count($list_dokumen) > 0 ? $list_dokumen : array();
-		echo json_encode($list);
-	}
-
-	public function ajax_upload_dokumen_pendukung()
-	{
-		$this->load->helper('form');
-		$this->load->library('form_validation');
-		$this->form_validation->set_rules('nama', 'Nama Dokumen', 'required');
-
-		if ($this->form_validation->run() !== true)
-		{
-			$data['success'] = -1;
-			$data['message'] = validation_errors();
-			echo json_encode($data);
-			return;
-		}
-
-		$this->session->unset_userdata('success');
-		$this->session->unset_userdata('error_msg');
-		$success_msg = 'Berhasil menyimpan data';
-
-		if ($_SESSION['id'])
-		{
-			$_POST['id_pend'] = $this->session->id;
-			$id_dokumen = $this->input->post('id');
-			unset($_POST['id']);
-
-			if ($id_dokumen)
-			{
-				$hasil = $this->web_dokumen_model->update($id_dokumen, $this->session->id, $mandiri = true);
-				if (!$hasil)
-				{
-					$data['success'] = -1;
-					$data['message'] = 'Gagal update';
-				}
-			}
-			else
-			{
-				$_POST['dok_warga'] = 1; // Boleh diubah di layanan mandiri
-				$this->web_dokumen_model->insert($mandiri = true);
-			}
-			$data['success'] = $this->session->success;
-			$data['message'] = $data['success'] == -1 ? $this->session->error_msg : $success_msg;
-		}
-		else
-		{
-			$data['success'] = -1;
-			$data['message'] = 'Anda tidak mempunyai hak akses itu';
-		}
-
-		echo json_encode($data);
-	}
-
-	public function ajax_get_dokumen_pendukung()
-	{
-		$id_dokumen = $this->input->post('id_dokumen');
-		$data = $this->web_dokumen_model->get_dokumen($id_dokumen, $this->session->id);
-
-		$data['anggota'] = $this->web_dokumen_model->get_dokumen_di_anggota_lain($id_dokumen);
-
-		if (empty($data))
-		{
-			$data['success'] = -1;
-			$data['message'] = 'Tidak ditemukan';
-		}
-		elseif ($this->session->id != $data['id_pend'])
-		{
-			$data = ['message' => 'Anda tidak mempunyai hak akses itu'];
-		}
-		echo json_encode($data);
-	}
-
-	public function ajax_hapus_dokumen_pendukung()
-	{
-		$id_dokumen = $this->input->post('id_dokumen');
-		$data = $this->web_dokumen_model->get_dokumen($id_dokumen);
-		if (empty($data))
-		{
-			$data['success'] = -1;
-			$data['message'] = 'Tidak ditemukan';
-		}
-		elseif ($_SESSION['id'] != $data['id_pend'])
-		{
-			$data['success'] = -1;
-			$data['message'] = 'Anda tidak mempunyai hak akses itu';
-		}
-		else
-		{
-			$this->web_dokumen_model->delete($id_dokumen);
-			$data['success'] = $this->session->userdata('success') ? : '1';
-		}
-		echo json_encode($data);
+		$this->load->view('gis/aparatur_wilayah', $data);
 	}
 
 	public function ambil_data_covid()
@@ -876,4 +608,32 @@ class First extends Web_Controller {
 		}
 	}
 
+	public function status_idm()
+	{
+		if (!$this->web_menu_model->menu_aktif('status_idm')) show_404();
+
+		$data = $this->includes;
+		$this->load->library('data_publik');
+		$this->_get_common_data($data);
+		$kode_desa = $data['desa']['kode_desa'];
+		if ($this->data_publik->has_internet_connection())
+		{
+			$this->data_publik->set_api_url("https://idm.kemendesa.go.id/open/api/desa/rumusan/$kode_desa/2021", "idm_2021_$kode_desa")
+				->set_interval(7)
+				->set_cache_folder(FCPATH.'desa');
+
+			$idm = $this->data_publik->get_url_content();
+			if ($idm->body->error)
+			{
+				$idm->body->mapData->error_msg = $idm->body->message . " : " . $idm->header->url . "<br><br>" .
+					"Periksa Kode Desa di Identitas Desa. Masukkan kode lengkap, contoh '3507012006'<br>";
+			}
+			$data['idm'] = $idm->body->mapData;
+		}
+
+		$data['halaman_statis'] = 'home/idm';
+
+		$this->set_template('layouts/halaman_statis_lebar.tpl.php');
+		$this->load->view($this->template, $data);
+	}
 }

@@ -146,19 +146,30 @@ class Rtm_model extends CI_Model {
 		status_sukses($outp); //Tampilkan Pesan
 	}
 
-	public function update_anggota($id, $id_kk)
+	// id = id_penduduk pd tweb_penduduk, id = nik_kepala pd tweb_rtm
+	public function update_anggota($id, $id_rtm)
 	{
-		$data = $_POST;
+		// Krn tweb_penduduk menggunakan no_kk(no_rtm) bukan id sebagai id_rtm, jd perlu dicari dlu
+		$no_rtm = $this->db->get_where('tweb_rtm', ['id' => $id_rtm])->row();
 
-		$data['updated_at'] = date('Y-m-d H:i:s');
-		$data['updated_by'] = $this->session->user;
-		$this->db->where('id', $id);
-		$outp = $this->db->update('tweb_penduduk', $data);
-		// Kalau menjadi kepala rumah tangga, tweb_rtm perlu diupdate juga
-		if ($data['rtm_level'] == 1)
+		$rtm_level = $this->input->post('rtm_level');
+
+		$data = [
+			'rtm_level' => $rtm_level,
+			'updated_at' => date('Y-m-d H:i:s'),
+			'updated_by' => $this->session->user
+		];
+
+		if ($rtm_level == 1)
 		{
-			$this->db->where('id', $id_kk)->update('tweb_rtm', array('nik_kepala' => $id));
+			// Ganti semua level penduduk dgn id_rtm yg sma -> rtm_level = 2 (Anggota)
+			$this->db->where('id_rtm', $no_rtm->no_kk)->update('tweb_penduduk', ['rtm_level' => '2']);
+
+			// nik_kepala = id_penduduk pd table tweb_penduduk
+			$this->db->where('id', $no_rtm->no_kk)->update('tweb_rtm', ['nik_kepala' => $id]);
 		}
+
+		$outp = $this->db->where('id', $id)->update('tweb_penduduk', $data);
 
 		status_sukses($outp); //Tampilkan Pesan
 	}
@@ -218,10 +229,9 @@ class Rtm_model extends CI_Model {
 
 	private function get_kode_wilayah()
 	{
-		$d = $this->config_model->get_data();
-		$data = $d['kode_kabupaten'].$d['kode_kecamatan'].$d['kode_desa'];
+		$data = $this->config_model->get_data();
 
-		return $data;
+		return $data['kode_desa'];
 	}
 
 	public function list_penduduk_lepas()
@@ -274,11 +284,14 @@ class Rtm_model extends CI_Model {
 
 	public function get_kepala_rtm($id, $is_no_kk=false)
 	{
+		if (empty($id)) return;
+
 		$kolom_id = ($is_no_kk) ? "no_kk" : "id";
 		$this->load->model('penduduk_model');
-		$sql = "SELECT u.id, u.nik, u.nama, r.no_kk, u.tempatlahir, u.tanggallahir, (SELECT DATE_FORMAT(FROM_DAYS(TO_DAYS(NOW()) - TO_DAYS(`tanggallahir`)), '%Y') + 0 FROM tweb_penduduk WHERE id = u.id) AS umur, d.nama as pendidikan, f.nama as warganegara, a.nama as agama, wil.rt, wil.rw, wil.dusun
+		$sql = "SELECT u.id, u.nik, u.nama, r.no_kk, x.nama AS sex, u.tempatlahir, u.tanggallahir, (SELECT DATE_FORMAT(FROM_DAYS(TO_DAYS(NOW()) - TO_DAYS(`tanggallahir`)), '%Y') + 0 FROM tweb_penduduk WHERE id = u.id) AS umur, d.nama as pendidikan, f.nama as warganegara, a.nama as agama, wil.rt, wil.rw, wil.dusun
 			FROM tweb_rtm r
 			LEFT JOIN tweb_penduduk u ON u.id = r.nik_kepala
+			LEFT JOIN tweb_penduduk_sex x ON u.sex = x.id
 			LEFT JOIN tweb_penduduk_pendidikan_kk d ON u.pendidikan_kk_id = d.id
 			LEFT JOIN tweb_penduduk_warganegara f ON u.warganegara_id = f.id
 			LEFT JOIN tweb_penduduk_agama a ON u.agama_id = a.id
@@ -354,7 +367,8 @@ class Rtm_model extends CI_Model {
 		return $this->paging;
 	}
 
-	public function list_data($o = 0, $offset = 0, $limit = 500)
+	// $limit = 0 mengambil semua
+	public function list_data($o = 0, $offset = 0, $limit = 0)
 	{
 		$this->db->select('u.id, u.no_kk, t.foto, t.nama AS kepala_kk, t.nik, k.alamat, (SELECT COUNT(id) FROM tweb_penduduk WHERE id_rtm = u.no_kk ) AS jumlah_anggota, c.dusun, c.rw, c.rt, u.tgl_daftar');
 
@@ -371,7 +385,7 @@ class Rtm_model extends CI_Model {
 			default: ' ';
 		}
 
-		$this->db->limit($limit, $offset);
+		if ($limit > 0 ) $this->db->limit($limit, $offset);
 
 		$data = $this->db->get()->result_array();
 
